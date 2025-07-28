@@ -1,0 +1,40 @@
+name: Build ZMK Firmware
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y wget python3-pip cmake ninja-build gperf ccache dfu-util device-tree-compiler libffi-dev
+          pip3 install west
+
+      - name: Initialize West and fetch ZMK
+        run: |
+          west init -l config
+          west update
+          west zephyr-export
+
+      - name: Build for feather_nrf52840
+        run: |
+          west build -s zmk/app -b feather_nrf52840 -- -DZMK_CONFIG=./config -DSHIELD=feather
+
+      - name: Archive firmware artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: feather_firmware
+          path: |
+            build/zephyr/zmk.uf2
+            build/zephyr/zmk.hex
+            build/zephyr/zmk.bin
